@@ -3,8 +3,6 @@
   "short_name": "SmartDebt",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#FAFAF9",
-  "theme_color": "#ee6c4d",
   "orientation": "portrait",
   "icons": [
     {
@@ -18,4 +16,5 @@
       "type": "image/png"
     }
   ]
+
 }
