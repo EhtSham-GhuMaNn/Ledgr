@@ -77,9 +77,11 @@
 
         @media print {
             .no-print { display: none !important; }
-            body { background: white; color: black; }
+            body { background: white; color: black; overflow: visible !important; height: auto !important; }
+            #root { overflow: visible !important; height: auto !important; }
             .print-only { display: block !important; }
             .card { border: 1px solid #ccc; box-shadow: none; break-inside: avoid; }
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
         .print-only { display: none; }
     </style>
@@ -101,6 +103,7 @@
 
         // --- ICONS ---
         const icons = {
+            logo: <g><path d="M21.21 15.89A10 10 0 1 1 8 2.83" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><path d="M22 12A10 10 0 0 0 12 2v10z" fill="currentColor" /></g>,
             wallet: <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />,
             users: <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />,
             plus: <path d="M5 12h14M12 5v14" />,
@@ -225,7 +228,7 @@
             return (
                 <ToastContext.Provider value={{ addToast }}>
                     {children}
-                    <div className="fixed bottom-24 left-4 right-4 z-[60] flex flex-col gap-2 pointer-events-none">
+                    <div className="fixed bottom-24 left-4 right-4 z-[60] flex flex-col gap-2 pointer-events-none no-print">
                         {toasts.map(t => (
                             <div key={t.id} className="bg-stone-900 text-white p-4 rounded-xl shadow-xl flex justify-between items-center pointer-events-auto animate-slide-up border-l-4 border-primary">
                                 <span className="font-medium text-sm">{t.msg}</span>
@@ -360,7 +363,7 @@
                 }
             };
             return (
-                <div className="fixed inset-0 bg-stone-100 dark:bg-stone-900 z-50 flex flex-col items-center justify-center">
+                <div className="fixed inset-0 bg-stone-100 dark:bg-stone-900 z-[100] flex flex-col items-center justify-center no-print">
                     <div className={`bg-primary p-4 rounded-2xl mb-6 text-white shadow-lg ${shake ? 'animate-shake' : ''}`}><Icon name="lock" size={32} /></div>
                     <div className="flex gap-4 mb-8">
                         {[0,1,2,3].map(i => <div key={i} className={`w-4 h-4 rounded-full transition-colors ${input.length > i ? 'bg-primary' : 'bg-stone-300'}`} />)}
@@ -369,6 +372,23 @@
                         {[1,2,3,4,5,6,7,8,9,0].map(n => (
                             <button key={n} onClick={() => handle(n.toString())} className={`h-16 w-16 rounded-full bg-white dark:bg-stone-800 font-bold text-xl shadow-sm active:scale-95 transition-transform dark:text-white ${n===0 && 'col-start-2'}`}>{n}</button>
                         ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const PinSetupModal = ({ isOpen, onClose, onSave }) => {
+            const [pin, setPin] = useState("");
+            if(!isOpen) return null;
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-stone-900 p-6 rounded-3xl w-full max-w-xs animate-scale-in text-center">
+                        <h3 className="font-bold text-lg mb-4 dark:text-white">Set New PIN</h3>
+                        <input type="number" autoFocus className="w-full text-center text-3xl font-black bg-stone-100 dark:bg-stone-800 rounded-xl py-4 mb-6 tracking-[1em] outline-none focus:ring-2 ring-primary dark:text-white" value={pin} onChange={e => {if(e.target.value.length<=4) setPin(e.target.value)}} placeholder="----"/>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button onClick={onClose} className="py-3 font-bold text-stone-500 bg-stone-100 dark:bg-stone-800 rounded-xl">Cancel</button>
+                            <button onClick={() => { if(pin.length===4) onSave(pin); }} disabled={pin.length!==4} className="py-3 font-bold text-white bg-primary rounded-xl disabled:opacity-50">Save</button>
+                        </div>
                     </div>
                 </div>
             );
@@ -436,11 +456,17 @@
                                 <button type="button" onClick={() => setData({...data, type: 'borrowed'})} className={`py-3 rounded-lg font-bold text-sm transition-all ${data.type === 'borrowed' ? 'bg-red-500 text-white shadow' : 'text-stone-500'}`}>I Borrowed</button>
                             </div>
                             
-                            <div>
-                                <label className="text-xs font-bold text-stone-400 uppercase">Amount</label>
-                                <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-xl text-stone-300">{settings.currency === 'USD' ? '$' : settings.currency}</span>
-                                    <input required type="number" step="0.01" value={data.amount} onChange={e => setData({...data, amount: e.target.value})} className={`w-full pl-14 pr-4 py-4 bg-stone-50 dark:bg-stone-800 rounded-xl font-black outline-none focus:ring-2 ring-primary dark:text-white ${!data.amount ? 'border-2 border-red-500/20' : ''}`} style={{fontSize: data.amount.length > 5 ? '1.5rem' : '2rem'}} placeholder="0.00" />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="relative col-span-1">
+                                    <label className="text-xs font-bold text-stone-400 uppercase">Amount</label>
+                                    <span className="absolute left-3 top-8 font-black text-lg text-stone-400">{settings.currency === 'USD' ? '$' : settings.currency}</span>
+                                    <input required type="number" step="0.01" value={data.amount} onChange={e => setData({...data, amount: e.target.value})} className={`w-full pl-14 pr-3 py-3 mt-1 bg-stone-50 dark:bg-stone-800 rounded-xl font-black outline-none focus:ring-2 ring-primary dark:text-white ${!data.amount ? 'border-2 border-red-500/20' : ''}`} style={{fontSize: data.amount.length > 5 ? '1.5rem' : '2rem'}} placeholder="0.00" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-stone-400 uppercase">Category</label>
+                                    <select value={data.category} onChange={e => setData({...data, category: e.target.value})} className="w-full mt-1 px-3 py-3.5 bg-stone-50 dark:bg-stone-800 rounded-xl font-medium outline-none focus:ring-2 ring-primary dark:text-white appearance-none">
+                                        {settings.categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
                                 </div>
                             </div>
 
@@ -462,28 +488,20 @@
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
+                                <div className="col-span-2">
                                     <label className="text-xs font-bold text-stone-400 uppercase">Description</label>
                                     <input type="text" value={data.desc} onChange={e => setData({...data, desc: e.target.value})} className="w-full mt-1 px-4 py-3 bg-stone-50 dark:bg-stone-800 rounded-xl font-medium outline-none focus:ring-2 ring-primary dark:text-white capitalize" placeholder="Short Desc" />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-stone-400 uppercase">Category</label>
-                                    <select value={data.category} onChange={e => setData({...data, category: e.target.value})} className="w-full mt-1 px-4 py-3 bg-stone-50 dark:bg-stone-800 rounded-xl font-medium outline-none focus:ring-2 ring-primary dark:text-white appearance-none">
-                                        {settings.categories.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
                                 </div>
                             </div>
 
                             <div>
                                 <label className="text-xs font-bold text-stone-400 uppercase">Date</label>
-                                <div className="flex gap-2">
-                                    <input required type="datetime-local" value={data.date} onChange={e => setData({...data, date: e.target.value})} className="flex-1 mt-1 px-4 py-3 bg-stone-50 dark:bg-stone-800 rounded-xl font-medium outline-none focus:ring-2 ring-primary dark:text-white" />
-                                </div>
+                                <input required type="datetime-local" value={data.date} onChange={e => setData({...data, date: e.target.value})} className="w-full mt-1 px-4 py-3 bg-stone-50 dark:bg-stone-800 rounded-xl font-medium outline-none focus:ring-2 ring-primary dark:text-white" />
                             </div>
 
                             <div>
                                 <label className="text-xs font-bold text-stone-400 uppercase">Notes (Optional)</label>
-                                <textarea value={data.notes} onChange={e => setData({...data, notes: e.target.value})} className="w-full mt-1 px-4 py-3 bg-stone-50 dark:bg-stone-800 rounded-xl font-medium outline-none focus:ring-2 ring-primary dark:text-white h-20 resize-none" placeholder="Details..."></textarea>
+                                <textarea value={data.notes} onChange={e => setData({...data, notes: e.target.value})} className="w-full mt-1 px-4 py-3 bg-stone-50 dark:bg-stone-800 rounded-xl font-medium outline-none focus:ring-2 ring-primary dark:text-white h-16 resize-none" placeholder="Details..."></textarea>
                             </div>
 
                             <button type="submit" className="w-full py-4 bg-stone-900 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">Save Record</button>
@@ -521,16 +539,44 @@
             const [selectedMem, setSelectedMem] = useState(null);
             const [modalOpen, setModalOpen] = useState(false);
             const [actionSheetOpen, setActionSheetOpen] = useState(false);
+            const [pinModalOpen, setPinModalOpen] = useState(false);
             const [editRec, setEditRec] = useState(null);
-            const [activeRec, setActiveRec] = useState(null); // For action sheet
-            const [locked, setLocked] = useState(settings.pinEnabled);
+            const [activeRec, setActiveRec] = useState(null); 
+            const [locked, setLocked] = useState(false); // Init false to avoid flash, controlled by useEffect
             const [search, setSearch] = useState("");
+            const [searchOpen, setSearchOpen] = useState(false);
             const [filter, setFilter] = useState("all");
             const [dateRange, setDateRange] = useState({start: '', end: ''});
             const [sortBy, setSortBy] = useState("recent"); 
             const [isFilterOpen, setIsFilterOpen] = useState(false);
+            const [newCatName, setNewCatName] = useState("");
 
-            useEffect(() => setLocked(settings.pinEnabled), [settings.pinEnabled]);
+            // Prevent flash by checking loading state before enforcing lock
+            useEffect(() => {
+                if(!loading && settings.pinEnabled) setLocked(true);
+            }, [loading, settings.pinEnabled]);
+
+            // History Handling
+            useEffect(() => {
+                const handlePop = (e) => {
+                    if (modalOpen) setModalOpen(false);
+                    else if (actionSheetOpen) setActionSheetOpen(false);
+                    else if (pinModalOpen) setPinModalOpen(false);
+                    else if (searchOpen) setSearchOpen(false);
+                    else if (view === 'appearance' || view === 'advanced') setView('settings'); // Correctly goes back to Settings
+                    else if (view !== 'home') setView('home');
+                    else if (selectedMem) setSelectedMem(null);
+                };
+                window.addEventListener('popstate', handlePop);
+                return () => window.removeEventListener('popstate', handlePop);
+            }, [modalOpen, actionSheetOpen, searchOpen, view, selectedMem, pinModalOpen]);
+
+            const pushHistory = () => window.history.pushState(null, '');
+
+            const toggleSearch = () => {
+                if(!searchOpen) pushHistory();
+                setSearchOpen(!searchOpen);
+            }
 
             // Analytics
             const net = useMemo(() => records.reduce((a, r) => a + (r.type === 'lent' ? r.amount : -r.amount), 0), [records]);
@@ -675,7 +721,10 @@
 
             const handleCategoryChange = (val, type) => {
                 if (type === 'add') {
-                    if (val && !settings.categories.includes(val)) updateSettings({ categories: [...settings.categories, val] });
+                    if (val && !settings.categories.includes(val)) {
+                        updateSettings({ categories: [...settings.categories, val] });
+                        setNewCatName("");
+                    }
                 } else {
                     updateSettings({ categories: settings.categories.filter(c => c !== val) });
                 }
@@ -696,19 +745,30 @@
                     {/* Header */}
                     <div className="sticky top-0 z-30 bg-stone-50/80 dark:bg-darkbg/80 backdrop-blur-md px-4 py-3 flex justify-between items-center border-b dark:border-stone-800">
                         <div className="flex items-center gap-2">
-                            {selectedMem ? <button onClick={() => setSelectedMem(null)} className="p-2 rounded-full hover:bg-stone-200 dark:hover:bg-stone-800 dark:text-white" aria-label="Back"><Icon name="chevronLeft" /></button> : <div className="bg-primary p-2 rounded-xl text-white shadow"><Icon name="wallet" /></div>}
-                            <h1 className="font-black text-lg dark:text-white">{selectedMem ? members.find(m => m.id === selectedMem)?.name : 'SmartDebt'}</h1>
+                            {selectedMem || view !== 'home' ? 
+                                <button onClick={() => window.history.back()} className="p-2 rounded-full hover:bg-stone-200 dark:hover:bg-stone-800 dark:text-white" aria-label="Back"><Icon name="chevronLeft" /></button> 
+                                : <div className="bg-gradient-to-tr from-primary to-orange-400 p-2.5 rounded-xl text-white shadow-lg shadow-primary/30"><Icon name="logo" size={24} /></div>
+                            }
+                            <h1 className="font-black text-lg dark:text-white">
+                                {selectedMem ? members.find(m => m.id === selectedMem)?.name : (view === 'settings' ? 'Settings' : (view === 'insights' ? 'Insights' : 'SmartDebt'))}
+                            </h1>
                         </div>
                         <div className="flex gap-1">
+                            {!selectedMem && view === 'home' && <button onClick={toggleSearch} className={`p-2 rounded-full hover:bg-stone-200 dark:hover:bg-stone-800 ${searchOpen ? 'text-primary' : 'text-stone-500'}`}><Icon name="search"/></button>}
                             {selectedMem && <button onClick={shareReport} className="p-2 rounded-full hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-500" aria-label="Share"><Icon name="share" /></button>}
-                            <button onClick={() => setView('settings')} className="p-2 rounded-full hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-500" aria-label="Settings"><Icon name="settings" /></button>
+                            <button onClick={() => { if(view==='settings') window.history.back(); else { pushHistory(); setView('settings'); } }} className={`p-2 rounded-full hover:bg-stone-200 dark:hover:bg-stone-800 ${view==='settings' ? 'text-primary':'text-stone-500'}`} aria-label="Settings"><Icon name="settings" /></button>
                         </div>
                     </div>
 
                     <div className="p-4 space-y-6">
-                        {/* Limit Warning */}
-                        {settings.limit > 0 && lent > settings.limit && (
-                            <div className="bg-red-100 text-red-600 p-3 rounded-xl text-xs font-bold text-center animate-pulse">Lending Limit Exceeded!</div>
+                        {/* Search Overlay */}
+                        {searchOpen && (
+                            <div className="animate-fade-in mb-4">
+                                <div className="relative">
+                                    <input autoFocus type="text" placeholder="Search records..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-4 pr-10 py-3 bg-white dark:bg-carddark rounded-2xl shadow-sm outline-none focus:ring-2 ring-primary/20 dark:text-white transition-all" />
+                                    {search && <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400"><Icon name="x" size={14}/></button>}
+                                </div>
+                            </div>
                         )}
 
                         {view === 'settings' ? (
@@ -724,10 +784,10 @@
                                     </div>
                                     
                                     <div className="space-y-3">
-                                        <button onClick={() => setView('appearance')} className="w-full py-3 bg-stone-100 dark:bg-stone-800 rounded-xl font-bold flex justify-between items-center px-4 dark:text-white">
+                                        <button onClick={() => { pushHistory(); setView('appearance'); }} className="w-full py-3 bg-stone-100 dark:bg-stone-800 rounded-xl font-bold flex justify-between items-center px-4 dark:text-white">
                                             Appearance <Icon name="chevronRight" size={16}/>
                                         </button>
-                                        <button onClick={() => setView('advanced')} className="w-full py-3 bg-stone-100 dark:bg-stone-800 rounded-xl font-bold flex justify-between items-center px-4 dark:text-white">
+                                        <button onClick={() => { pushHistory(); setView('advanced'); }} className="w-full py-3 bg-stone-100 dark:bg-stone-800 rounded-xl font-bold flex justify-between items-center px-4 dark:text-white">
                                             Advanced Features <Icon name="chevronRight" size={16}/>
                                         </button>
                                     </div>
@@ -738,11 +798,9 @@
                                     <div className="grid grid-cols-2 gap-2">
                                         <button onClick={() => exportData('json')} className="py-3 bg-stone-100 dark:bg-stone-800 rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2 dark:text-white"><Icon name="download" size={14}/> JSON</button>
                                         <button onClick={() => exportData('csv')} className="py-3 bg-stone-100 dark:bg-stone-800 rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2 dark:text-white"><Icon name="download" size={14}/> CSV</button>
-                                        <label className="py-3 bg-stone-100 dark:bg-stone-800 rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2 cursor-pointer dark:text-white"><Icon name="upload" size={14}/> Import <input type="file" className="hidden" onChange={importData} /></label>
-                                        <button onClick={installPWA} className="py-3 bg-primary text-white rounded-xl font-bold text-xs uppercase">Install App</button>
+                                        <label className="col-span-2 py-3 bg-stone-100 dark:bg-stone-800 rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2 cursor-pointer dark:text-white"><Icon name="upload" size={14}/> Import Data <input type="file" className="hidden" onChange={importData} /></label>
                                     </div>
                                 </div>
-                                <button onClick={() => setView('home')} className="w-full py-4 bg-stone-200 dark:bg-stone-800 rounded-xl font-bold dark:text-white">Back to Home</button>
                             </div>
                         ) : view === 'appearance' ? (
                             <div className="animate-slide-up space-y-4">
@@ -767,7 +825,6 @@
                                         </div>
                                     </div>
                                 </div>
-                                <button onClick={() => setView('settings')} className="w-full py-4 bg-stone-200 dark:bg-stone-800 rounded-xl font-bold dark:text-white">Back to Settings</button>
                             </div>
                         ) : view === 'advanced' ? (
                             <div className="animate-slide-up space-y-4">
@@ -788,7 +845,7 @@
                                         <div className="flex flex-wrap gap-2">
                                             {settings.categories.map(c => (
                                                 <span key={c} className="bg-stone-100 dark:bg-stone-800 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 dark:text-white">
-                                                    {c} <button onClick={() => confirm("Delete category?") && handleCategoryChange(c, 'del')} className="text-red-500">×</button>
+                                                    {c} <button onClick={() => confirm(`Delete ${c}?`) && handleCategoryChange(c, 'del')} className="text-red-500">×</button>
                                                 </span>
                                             ))}
                                         </div>
@@ -798,12 +855,10 @@
                                 {/* Security */}
                                 <div className="bg-white dark:bg-carddark p-4 rounded-2xl shadow-sm flex justify-between items-center">
                                     <span className="font-bold dark:text-white">App Lock (PIN)</span>
-                                    <button onClick={() => { if(settings.pinEnabled) updateSettings({pinEnabled:false}); else { const p = prompt("Set PIN (4 digits)"); if(p?.length===4) updateSettings({pin:p, pinEnabled:true}); } }} className={`w-12 h-6 rounded-full relative transition-colors ${settings.pinEnabled ? 'bg-primary' : 'bg-stone-300'}`}>
+                                    <button onClick={() => { if(settings.pinEnabled) updateSettings({pinEnabled:false}); else setPinModalOpen(true); }} className={`w-12 h-6 rounded-full relative transition-colors ${settings.pinEnabled ? 'bg-primary' : 'bg-stone-300'}`}>
                                         <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${settings.pinEnabled ? 'left-7' : 'left-1'}`} />
                                     </button>
                                 </div>
-
-                                <button onClick={() => setView('settings')} className="w-full py-4 bg-stone-200 dark:bg-stone-800 rounded-xl font-bold dark:text-white">Back to Settings</button>
                             </div>
                         ) : view === 'insights' ? (
                             <div className="animate-slide-up space-y-4">
@@ -835,65 +890,26 @@
                             </div>
                         ) : (
                             <>
-                                <div className="relative">
-                                    <Icon name="search" className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" />
-                                    <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-white dark:bg-carddark rounded-2xl shadow-sm outline-none focus:ring-2 ring-primary/20 dark:text-white transition-all" />
-                                    {search && <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400"><Icon name="x" size={14}/></button>}
-                                </div>
-
-                                {!selectedMem && !search && (
-                                    <div className="bg-white dark:bg-carddark p-2 rounded-2xl shadow-sm flex text-center divide-x dark:divide-stone-700">
-                                        <div className="flex-1 py-2">
-                                            <div className="text-[10px] font-black uppercase text-green-500">Lent</div>
-                                            <div className="font-black dark:text-white text-sm"><Currency val={lent} settings={settings} /></div>
+                                {/* DASHBOARD - Hides when search is open */}
+                                {!searchOpen && !selectedMem && (
+                                    <div className="animate-fade-in">
+                                        <div className="bg-white dark:bg-carddark p-2 rounded-2xl shadow-sm flex text-center divide-x dark:divide-stone-700 mb-6">
+                                            <div className="flex-1 py-2 relative">
+                                                {settings.limit > 0 && lent > settings.limit && <div className="absolute top-0 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" title="Limit Exceeded"></div>}
+                                                <div className={`text-[10px] font-black uppercase ${settings.limit > 0 && lent > settings.limit ? 'text-red-500' : 'text-green-500'}`}>Lent</div>
+                                                <div className="font-black dark:text-white text-sm"><Currency val={lent} settings={settings} /></div>
+                                            </div>
+                                            <div className="flex-1 py-2">
+                                                <div className="text-[10px] font-black uppercase text-red-500">Borrowed</div>
+                                                <div className="font-black dark:text-white text-sm"><Currency val={borrowed} settings={settings} /></div>
+                                            </div>
+                                            <div className="flex-1 py-2">
+                                                <div className="text-[10px] font-black uppercase text-primary">Net</div>
+                                                <div className="font-black dark:text-white text-sm"><Currency val={net} settings={settings} /></div>
+                                            </div>
                                         </div>
-                                        <div className="flex-1 py-2">
-                                            <div className="text-[10px] font-black uppercase text-red-500">Borrowed</div>
-                                            <div className="font-black dark:text-white text-sm"><Currency val={borrowed} settings={settings} /></div>
-                                        </div>
-                                        <div className="flex-1 py-2">
-                                            <div className="text-[10px] font-black uppercase text-primary">Net</div>
-                                            <div className="font-black dark:text-white text-sm"><Currency val={net} settings={settings} /></div>
-                                        </div>
-                                    </div>
-                                )}
 
-                                {selectedMem && (
-                                    <div className="bg-white dark:bg-carddark p-6 rounded-3xl shadow-sm text-center animate-scale-in relative overflow-hidden">
-                                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-orange-300"></div>
-                                        <div className="w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center text-2xl font-bold text-white shadow-lg" style={{backgroundColor: stringToColor(members.find(m => m.id === selectedMem)?.name || '')}}>{getInitials(members.find(m => m.id === selectedMem)?.name)}</div>
-                                        <h2 className="text-2xl font-black dark:text-white">{members.find(m => m.id === selectedMem)?.name}</h2>
-                                        <div className={`text-lg font-bold mt-1 ${memBals[selectedMem] >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                            {memBals[selectedMem] >= 0 ? 'Owes you ' : 'You owe '}
-                                            <Currency val={memBals[selectedMem]} settings={settings} />
-                                        </div>
-                                        <div className="flex gap-2 justify-center mt-6">
-                                            <button onClick={() => settleUp(selectedMem)} className="flex items-center gap-2 px-6 py-3 bg-stone-900 dark:bg-white text-white dark:text-black rounded-xl font-bold text-sm shadow-lg active:scale-95 transition-transform"><Icon name="check" /> Settle Up</button>
-                                            <button onClick={() => { if(confirm("Delete member?")) deleteMember(selectedMem); else setSelectedMem(null); }} className="p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors"><Icon name="trash" /></button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="flex gap-2 items-center">
-                                    <button onClick={() => setIsFilterOpen(!isFilterOpen)} className={`p-2 rounded-xl transition-colors ${isFilterOpen || dateRange.start ? 'bg-stone-800 text-white' : 'bg-white dark:bg-carddark text-stone-500'}`}><Icon name="filter" size={16} /></button>
-                                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide flex-1">
-                                        {['all', 'lent', 'borrowed'].map(f => (
-                                            <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded-xl text-xs font-bold uppercase transition-colors ${filter === f ? 'bg-stone-900 text-white dark:bg-white dark:text-black' : 'bg-white dark:bg-carddark text-stone-500'}`}>{f}</button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {isFilterOpen && (
-                                    <div className="bg-white dark:bg-carddark p-3 rounded-2xl shadow-inner animate-fade-in grid grid-cols-2 gap-2">
-                                        <input type="date" value={dateRange.start} onChange={e => setDateRange({...dateRange, start: e.target.value})} className="bg-stone-50 dark:bg-stone-800 p-2 rounded-lg text-xs font-bold dark:text-white" />
-                                        <input type="date" value={dateRange.end} onChange={e => setDateRange({...dateRange, end: e.target.value})} className="bg-stone-50 dark:bg-stone-800 p-2 rounded-lg text-xs font-bold dark:text-white" />
-                                        <button onClick={() => {setDateRange({start:'',end:''}); setIsFilterOpen(false)}} className="col-span-2 text-xs font-bold text-red-500">Clear Date Filter</button>
-                                    </div>
-                                )}
-
-                                {!selectedMem && !search && (
-                                    <>
-                                        <div className="flex justify-between items-center px-1">
+                                        <div className="flex justify-between items-center px-1 mb-3">
                                             <span className="text-xs font-bold text-stone-400 uppercase">Members</span>
                                             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="text-xs font-bold bg-transparent text-primary outline-none">
                                                 <option value="recent">Recent</option>
@@ -901,12 +917,13 @@
                                                 <option value="balance">Highest Debt</option>
                                             </select>
                                         </div>
+                                        
                                         <div className="grid grid-cols-2 gap-3">
                                             {sortedMembers.map(m => {
                                                 const bg = stringToColor(m.name);
                                                 const textColor = getContrastYIQ(bg);
                                                 return (
-                                                    <div key={m.id} onClick={() => setSelectedMem(m.id)} className="bg-white dark:bg-carddark p-4 rounded-2xl shadow-sm active:scale-95 transition-transform cursor-pointer relative overflow-hidden group">
+                                                    <div key={m.id} onClick={() => { pushHistory(); setSelectedMem(m.id); }} className="bg-white dark:bg-carddark p-4 rounded-2xl shadow-sm active:scale-95 transition-transform cursor-pointer relative overflow-hidden group">
                                                         <div className="flex justify-between items-start mb-2">
                                                             <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs" style={{backgroundColor: bg, color: textColor}}>{getInitials(m.name)}</div>
                                                             <Icon name="chevronRight" className="text-stone-300" size={16} />
@@ -917,55 +934,94 @@
                                                 );
                                             })}
                                         </div>
-                                    </>
+                                    </div>
                                 )}
 
-                                <div className="pb-24">
-                                    {Object.keys(grouped).length ? Object.entries(grouped).map(([month, recs]) => (
-                                        <div key={month} className="mb-6 animate-fade-in">
-                                            <h3 className="text-xs font-bold text-stone-400 uppercase tracking-widest mb-3 ml-1 sticky top-[70px] bg-stone-50/90 dark:bg-darkbg/90 backdrop-blur p-2 z-10">{month}</h3>
-                                            <div className="space-y-3">
-                                                {recs.map(r => (
-                                                    <div key={r.id} className="flex justify-between items-center p-4 bg-white dark:bg-carddark rounded-2xl shadow-sm relative group overflow-hidden">
-                                                        <div className="flex items-center gap-3" onClick={() => { setEditRec(r); setModalOpen(true); }}>
-                                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${r.type === 'lent' ? 'bg-green-100 text-green-600 dark:bg-green-900/30' : 'bg-red-100 text-red-600 dark:bg-red-900/30'}`}>
-                                                                <Icon name={r.type === 'lent' ? 'arrowUpRight' : 'arrowDownLeft'} />
-                                                            </div>
-                                                            <div>
-                                                                <div className="font-bold text-sm dark:text-white"><Highlight text={r.desc || 'No Description'} /></div>
-                                                                <div className="text-xs text-stone-400 flex items-center gap-1">
-                                                                    <Highlight text={members.find(m => m.id === r.memberId)?.name || 'Unknown'} /> • <span className="bg-stone-100 dark:bg-stone-800 px-1 rounded">{r.category}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-right flex items-center gap-3">
-                                                            <div>
-                                                                <div className={`font-black ${r.type === 'lent' ? 'text-green-500' : 'text-red-500'}`}><Currency val={r.amount} settings={settings} /></div>
-                                                                <div className="text-[10px] text-stone-400">{getRelativeTime(r.date)}</div>
-                                                            </div>
-                                                            <button onClick={() => { setActiveRec(r); setActionSheetOpen(true); }} className="p-2 -mr-2 text-stone-300 hover:text-primary"><Icon name="sliders" size={16}/></button>
-                                                        </div>
-                                                    </div>
+                                {selectedMem && (
+                                    <div className="bg-white dark:bg-carddark p-6 rounded-3xl shadow-sm text-center animate-scale-in relative overflow-hidden mb-6">
+                                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-orange-300"></div>
+                                        <div className="w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center text-2xl font-bold text-white shadow-lg" style={{backgroundColor: stringToColor(members.find(m => m.id === selectedMem)?.name || '')}}>{getInitials(members.find(m => m.id === selectedMem)?.name)}</div>
+                                        <h2 className="text-2xl font-black dark:text-white">{members.find(m => m.id === selectedMem)?.name}</h2>
+                                        <div className={`text-lg font-bold mt-1 ${memBals[selectedMem] >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                            {memBals[selectedMem] >= 0 ? 'Owes you ' : 'You owe '}
+                                            <Currency val={memBals[selectedMem]} settings={settings} />
+                                        </div>
+                                        <div className="flex gap-2 justify-center mt-6 no-print">
+                                            <button onClick={() => settleUp(selectedMem)} className="flex items-center gap-2 px-6 py-3 bg-stone-900 dark:bg-white text-white dark:text-black rounded-xl font-bold text-sm shadow-lg active:scale-95 transition-transform"><Icon name="check" /> Settle Up</button>
+                                            <button onClick={() => window.print()} className="p-3 bg-stone-100 dark:bg-stone-800 text-stone-500 rounded-xl hover:bg-stone-200 transition-colors"><Icon name="print" /></button>
+                                            <button onClick={() => { if(confirm("Delete member?")) deleteMember(selectedMem); else setSelectedMem(null); }} className="p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors"><Icon name="trash" /></button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(!selectedMem || selectedMem) && (
+                                    <>
+                                        <div className="flex gap-2 items-center mb-4 no-print">
+                                            <button onClick={() => setIsFilterOpen(!isFilterOpen)} className={`p-2 rounded-xl transition-colors ${isFilterOpen || dateRange.start ? 'bg-stone-800 text-white' : 'bg-white dark:bg-carddark text-stone-500'}`}><Icon name="filter" size={16} /></button>
+                                            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide flex-1">
+                                                {['all', 'lent', 'borrowed'].map(f => (
+                                                    <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded-xl text-xs font-bold uppercase transition-colors ${filter === f ? 'bg-stone-900 text-white dark:bg-white dark:text-black' : 'bg-white dark:bg-carddark text-stone-500'}`}>{f}</button>
                                                 ))}
                                             </div>
                                         </div>
-                                    )) : (
-                                        <div className="text-center py-10 text-stone-400">
-                                            <Icon name="search" size={48} className="mx-auto mb-2 opacity-20"/>
-                                            No records found
+
+                                        {isFilterOpen && (
+                                            <div className="bg-white dark:bg-carddark p-3 rounded-2xl shadow-inner animate-fade-in grid grid-cols-2 gap-2 mb-4">
+                                                <input type="date" value={dateRange.start} onChange={e => setDateRange({...dateRange, start: e.target.value})} className="bg-stone-50 dark:bg-stone-800 p-2 rounded-lg text-xs font-bold dark:text-white" />
+                                                <input type="date" value={dateRange.end} onChange={e => setDateRange({...dateRange, end: e.target.value})} className="bg-stone-50 dark:bg-stone-800 p-2 rounded-lg text-xs font-bold dark:text-white" />
+                                                <button onClick={() => {setDateRange({start:'',end:''}); setIsFilterOpen(false)}} className="col-span-2 text-xs font-bold text-red-500">Clear Date Filter</button>
+                                            </div>
+                                        )}
+
+                                        <div className="pb-24">
+                                            {Object.keys(grouped).length ? Object.entries(grouped).map(([month, recs]) => (
+                                                <div key={month} className="mb-6 animate-fade-in card">
+                                                    <h3 className="text-xs font-bold text-stone-400 uppercase tracking-widest mb-3 ml-1 sticky top-[70px] bg-stone-50/90 dark:bg-darkbg/90 backdrop-blur p-2 z-10">{month}</h3>
+                                                    <div className="space-y-3">
+                                                        {recs.map(r => (
+                                                            <div key={r.id} onClick={() => { setActiveRec(r); setActionSheetOpen(true); }} className="flex justify-between items-center p-4 bg-white dark:bg-carddark rounded-2xl shadow-sm relative group overflow-hidden cursor-pointer active:bg-stone-50 dark:active:bg-stone-800">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${r.type === 'lent' ? 'bg-green-100 text-green-600 dark:bg-green-900/30' : 'bg-red-100 text-red-600 dark:bg-red-900/30'}`}>
+                                                                        <Icon name={r.type === 'lent' ? 'arrowUpRight' : 'arrowDownLeft'} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="font-bold text-sm dark:text-white"><Highlight text={r.desc || 'No Description'} /></div>
+                                                                        <div className="text-xs text-stone-400 flex items-center gap-1">
+                                                                            <Highlight text={members.find(m => m.id === r.memberId)?.name || 'Unknown'} /> • <span className="bg-stone-100 dark:bg-stone-800 px-1 rounded">{r.category}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right flex items-center gap-3">
+                                                                    <div>
+                                                                        <div className={`font-black ${r.type === 'lent' ? 'text-green-500' : 'text-red-500'}`}><Currency val={r.amount} settings={settings} /></div>
+                                                                        <div className="text-[10px] text-stone-400">{getRelativeTime(r.date)}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )) : (
+                                                <div className="text-center py-10 text-stone-400">
+                                                    <Icon name="search" size={48} className="mx-auto mb-2 opacity-20"/>
+                                                    No records found
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
+                                    </>
+                                )}
                             </>
                         )}
                     </div>
 
                     {/* Navbar */}
-                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-stone-900/90 dark:bg-white/90 backdrop-blur-md text-stone-400 dark:text-stone-500 px-6 py-3 rounded-full flex items-center gap-8 shadow-2xl z-40 no-print">
-                        <button onClick={() => { setView('home'); setSelectedMem(null); vibrate(); }} className={`p-2 transition-all ${view === 'home' ? 'text-white dark:text-black scale-110' : ''}`} aria-label="Home"><Icon name="users" /></button>
-                        <button onClick={() => { setEditRec(null); setModalOpen(true); vibrate(); }} className="bg-primary text-white p-3 rounded-full -mt-10 border-4 border-stone-50 dark:border-darkbg shadow-lg active:scale-90 transition-transform" aria-label="Add"><Icon name="plus" size={24} /></button>
-                        <button onClick={() => { setView('insights'); vibrate(); }} className={`p-2 transition-all ${view === 'insights' ? 'text-white dark:text-black scale-110' : ''}`} aria-label="Insights"><Icon name="chart" /></button>
-                    </div>
+                    {!selectedMem && view !== 'settings' && view !== 'advanced' && view !== 'appearance' && (
+                        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-stone-900/90 dark:bg-white/90 backdrop-blur-md text-stone-400 dark:text-stone-500 px-6 py-3 rounded-full flex items-center gap-8 shadow-2xl z-40 no-print">
+                            <button onClick={() => { if(view!=='home'){ pushHistory(); setView('home'); } vibrate(); }} className={`p-2 transition-all ${view === 'home' ? 'text-white dark:text-black scale-110' : ''}`} aria-label="Home"><Icon name="users" /></button>
+                            <button onClick={() => { setEditRec(null); setModalOpen(true); vibrate(); }} className="bg-primary text-white p-3 rounded-full -mt-10 border-4 border-stone-50 dark:border-darkbg shadow-lg active:scale-90 transition-transform" aria-label="Add"><Icon name="plus" size={24} /></button>
+                            <button onClick={() => { if(view!=='insights'){ pushHistory(); setView('insights'); } vibrate(); }} className={`p-2 transition-all ${view === 'insights' ? 'text-white dark:text-black scale-110' : ''}`} aria-label="Insights"><Icon name="chart" /></button>
+                        </div>
+                    )}
 
                     <RecordModal isOpen={modalOpen} onClose={() => setModalOpen(false)} record={editRec} members={members} onSave={handleSave} settings={settings} />
                     <ActionSheet 
@@ -975,6 +1031,7 @@
                         onDuplicate={() => duplicateRecord(activeRec)}
                         onDelete={() => deleteRecord(activeRec.id)}
                     />
+                    <PinSetupModal isOpen={pinModalOpen} onClose={() => setPinModalOpen(false)} onSave={(p) => { updateSettings({pin:p, pinEnabled:true}); setPinModalOpen(false); }} />
                 </div>
             );
         };
@@ -996,6 +1053,5 @@
         root.render(<App />);
     </script>
 </body>
-
 
 </html>
